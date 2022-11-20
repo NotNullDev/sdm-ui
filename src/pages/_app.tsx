@@ -1,6 +1,8 @@
 import { type AppType } from "next/dist/shared/lib/utils";
 import { useRouter } from "next/router";
-import { Toaster } from "react-hot-toast";
+import type { Admin, Record } from "pocketbase";
+import { useEffect, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { userStore } from "../lib/userStore";
 
 import "../styles/globals.css";
@@ -8,12 +10,12 @@ import "../styles/globals.css";
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
     <div className="flex h-screen w-screen flex-col">
-      <Header />
-      <div className="flex flex-1 flex-col">
-        <Guard>
+      <Guard>
+        <Header />
+        <div className="flex flex-1 flex-col">
           <Component {...pageProps} />
-        </Guard>
-      </div>
+        </div>
+      </Guard>
     </div>
   );
 };
@@ -22,10 +24,20 @@ type GuardProps = {
   children: React.ReactNode;
 };
 const Guard = ({ children }: GuardProps) => {
+  const [user, setUser] = useState<Record | Admin | null>(null);
+  const currentUser = userStore((state) => state.user);
   const router = useRouter();
 
-  if (!userStore.getState().user && router.asPath !== "/") {
-    return <div>PERMISSION DENIED</div>;
+  useEffect(() => {
+    setUser(currentUser);
+    toast("current user updated");
+    if (!currentUser) {
+      toast("current user is null");
+    }
+  }, [currentUser]);
+
+  if (!user) {
+    return <LoginComponent />;
   }
 
   return <>{children}</>;
@@ -54,7 +66,29 @@ const Header = () => {
           Logs
         </button>
       </div>
-      <button className="btn-ghost btn">logout</button>
+      <button
+        className="btn-ghost btn"
+        onClick={() => {
+          userStore.getState().logout();
+        }}
+      >
+        logout
+      </button>
+    </div>
+  );
+};
+
+const LoginComponent = () => {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <button
+        className="btn-primary btn"
+        onClick={() => {
+          userStore.getState().login();
+        }}
+      >
+        LOGIN
+      </button>
     </div>
   );
 };

@@ -1,4 +1,9 @@
-import type { Admin, AuthProviderInfo, Record } from "pocketbase";
+import type {
+  Admin,
+  AuthMethodsList,
+  AuthProviderInfo,
+  Record,
+} from "pocketbase";
 import toast from "react-hot-toast";
 import create from "zustand";
 import { pocketbase } from "./pocketbase";
@@ -6,6 +11,7 @@ import { pocketbase } from "./pocketbase";
 export type UserStoreType = {
   user: Record | Admin | null;
   login: () => void;
+  logout: () => void;
 };
 
 const redirectUri = "http://localhost:3000";
@@ -68,9 +74,15 @@ export const userStore = create<UserStoreType>()(
     }, true);
 
     const login = async () => {
-      const authMethods = await pocketbase
-        .collection("users")
-        .listAuthMethods();
+      let authMethods: AuthMethodsList | null = null;
+
+      try {
+        authMethods = await pocketbase.collection("users").listAuthMethods();
+      } catch (e) {
+        console.log(e);
+        return;
+      }
+
       const googleProvider = authMethods.authProviders.find(
         (p) => p.name === "google"
       );
@@ -78,9 +90,15 @@ export const userStore = create<UserStoreType>()(
       startChallenge(googleProvider);
     };
 
+    const logout = () => {
+      setState((old) => ({ ...old, user: null }));
+      pocketbase.authStore.clear();
+    };
+
     return {
       user: initUser,
       login,
+      logout,
     };
   }
 );
